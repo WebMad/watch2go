@@ -5,24 +5,32 @@
     <meta name="viewport"
           content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Тестовая штука</title>
+    <title>Watch2GO - совместный просмотр</title>
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
 <header>
     <div class="logo">
-        САЙТИК
+        Watch2GO
     </div>
 </header>
 <section class="container">
     <div class="video-container">
         <video id='video' class="video-frame" src='' controls></video>
         <div class="video-info">
-            <h2>Информация</h2>
-            <p>
-                <label for="video_url">URL видео</label><br>
-                <input type="text" id="video_url" name="video_url">
-            </p>
+            <div class="info-block">
+                <h2>Информация</h2>
+                <p>
+                    <label for="video_url">URL видео</label><br>
+                    <input type="text" id="video_url" name="video_url">
+                </p>
+            </div>
+            <div class="info-block">
+                <h2>Сообщения</h2>
+                <div id="msgContainer" class="msg-container">
+                    
+                </div>
+            </div>
         </div>
     </div>
 </section>

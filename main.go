@@ -8,10 +8,6 @@ import (
 	"github.com/gorilla/websocket"
 
 	"encoding/json"
-
-	"os"
-
-	"io/ioutil"
 )
 
 var upgrader = websocket.Upgrader{
@@ -19,53 +15,31 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-type VideoData struct {
-	Src      string  `json:"src"`
-	Time     float64 `json:"time"`
-	IsPaused bool    `json:"isPaused"`
-}
-
-func (videoData *VideoData) asJson() string {
-	encodedData, _ := json.Marshal(videoData)
-	return string(encodedData)
-}
-
 var clients = make(map[string]*websocket.Conn)
 
 func main() {
-	dataFile, err := os.Open("data.json")
+	var settings Settings
+	settings.load()
+
 	var videoData VideoData
-
-	if err != nil {
-		fmt.Println("[error] ошибка открытия файла сохранения")
-		return
-	}
-
-	byteValue, _ := ioutil.ReadAll(dataFile)
-	json.Unmarshal([]byte(byteValue), &videoData)
-
-	videoData.IsPaused = true
-
-	defer func() {
-		err := dataFile.Close()
-		if err != nil {
-			fmt.Println("[error] ошибка закрытия файла")
-		}
-	}()
+	videoData.load()
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		conn, _ := upgrader.Upgrade(w, r, nil)
+		conn, err := upgrader.Upgrade(w, r, nil)
+
+		if err != nil {
+			return
+		}
 
 		if clients[conn.RemoteAddr().String()] == nil {
+			clients[conn.RemoteAddr().String()] = conn
 			conn.SetCloseHandler(func(code int, text string) error {
 				if clients[conn.RemoteAddr().String()] != nil {
 					delete(clients, conn.RemoteAddr().String())
 				}
 				return nil
 			})
-			clients[conn.RemoteAddr().String()] = conn
 		}
-		fmt.Println(clients)
 
 		for {
 			msgType, msg, err := conn.ReadMessage()
@@ -83,26 +57,33 @@ func main() {
 			switch packet["type"] {
 			case "getData":
 				fmt.Println("[info] запрос на получение данных")
-				send(conn, msgType, videoData.asJson())
+				send(conn, msgType, videoData.asJSON())
 			case "pause":
 				videoData.IsPaused = true
 				videoData.Time = packet["time"].(float64)
 				fmt.Println("[info] пауза")
-				broadcast(clients, msgType, videoData.asJson())
+				broadcast(clients, msgType, videoData.asJSON())
 			case "play":
 				videoData.IsPaused = false
 				videoData.Time = packet["time"].(float64)
 				fmt.Println("[info] воспроизведение")
-				broadcast(clients, msgType, videoData.asJson())
+				broadcast(clients, msgType, videoData.asJSON())
 			case "changeTime":
 				fmt.Println("[info] время изменено")
 				videoData.Time = packet["time"].(float64)
-				broadcast(clients, msgType, videoData.asJson())
+				broadcast(clients, msgType, videoData.asJSON())
 			case "src":
 				fmt.Println("[info] изменен источник")
 				videoData.Src = packet["src"].(string)
 				videoData.Time = 0
-				broadcast(clients, msgType, videoData.asJson())
+				broadcast(clients, msgType, videoData.asJSON())
+			case "msg":
+				fmt.Println("[info] новое сообщение")
+				var msgPacket MsgPacket
+				msgPacket.PacketType = "msg"
+				msgPacket.Msg = packet["msg"].(string)
+				msgPacket.Type = packet["msgType"].(string)
+				broadcast(clients, msgType, msgPacket.asJSON())
 			default:
 				fmt.Println("[error] неизвестный тип сообщения:", packet["type"])
 			}
@@ -116,7 +97,7 @@ func main() {
 
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("frontend/assets/"))))
 
-	http.ListenAndServe(":25565", nil)
+	http.ListenAndServe(settings.IP+":"+settings.Port, nil)
 }
 
 func send(conn *websocket.Conn, msgType int, msg string) {

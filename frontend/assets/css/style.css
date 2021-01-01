@@ -27,20 +27,26 @@ header {
 .video-container {
     color: #acabab;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
 }
 
 .video-container h2 {
     color: #fff;
 }
 
+.msg-container {
+    height: 200px;
+    overflow: auto;
+}
+
 .video-frame {
     width: 60%;
-    height: 410px;
 }
 
 .video-info {
     padding: 0 10px 0 10px;
-    flex-grow: 1;
+    width: 35%;
 }
 
 .video-info h2 {
@@ -59,4 +65,37 @@ input {
     color: #ccc;
     height: auto;
     line-height: normal;
+}
+
+@media screen and (max-width: 1366px) {
+    .container {
+        width: 900px;
+    }
+}
+
+@media screen and (max-width: 1024px) {
+    .container {
+        width: 700px;
+    }
+}
+
+@media screen and (max-width: 800px) {
+    .container {
+        width: 600px;
+    }
+}
+
+@media screen and (max-width: 640px) {
+    .container {
+        width: 95%;
+    }
+
+    .video-frame {
+        width: 100%;
+    }
+    
+    .video-info {
+        margin-top: 20px;
+        width: 100%;
+    }
 }

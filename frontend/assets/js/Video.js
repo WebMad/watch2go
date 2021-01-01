@@ -1,3 +1,5 @@
+import MessageLogger from "./MessageLogger.js"
+
 export default class Video {
     constructor(video_tag, src_input, ws_server) {
         this.video_tag = video_tag;
@@ -6,6 +8,8 @@ export default class Video {
         this.src_input.on('change', () => {
             this.changeSrc(this.src_input.val());
         });
+
+        this.messageLogger = new MessageLogger()
 
         this.pauseFromServer = false;
 
@@ -37,12 +41,20 @@ export default class Video {
 
     onMessage(message) {
         let data = JSON.parse(message.data);
-        this.time = data.time;
-        if (data.isPaused !== this.video_tag.paused) {
-            this.pauseFromServer = true
+        if (data.packetType === "videoData") {
+            this.time = data.time;
+            if (data.isPaused !== this.video_tag.paused) {
+                this.pauseFromServer = true
+            }
+            this.is_paused = data.isPaused;
+            this.src = data.src;
+        } else if (data.packetType === "msg") {
+            if (data.type === "error") {
+                this.messageLogger.error(data.msg)
+            } else if (data.type === "info") {
+                this.messageLogger.info(data.msg)
+            }
         }
-        this.is_paused = data.isPaused;
-        this.src = data.src;
     }
 
     setPause() {
@@ -71,6 +83,10 @@ export default class Video {
         this.socket.send(`{"type": "src","src": "${src}"}`);
     }
 
+    sendMessage(type, msg) {
+        this.socket.send(`{"type": "msg", "msgType": "${type}","msg": "${msg}"}`);
+    }
+
     set src(value) {
         if (this._src !== value) {
             this.video_tag.src = value;
@@ -94,7 +110,15 @@ export default class Video {
         if (value) {
             this.video_tag.pause();
         } else {
-            this.video_tag.play();
+            let promise = this.video_tag.play();
+            if (promise !== undefined) {
+                promise.catch(() => {
+                    this.sendMessage("error", "У одного из пользователей запрещено воспроизведение медиа. Для решения проблемы нажмите на любой участок экрана.")
+                    this.pauseFromServer = false
+                    this.is_paused = true
+                    this.setPause();
+                });
+            }
         }
         this._is_paused = value;
     }
